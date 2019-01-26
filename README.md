@@ -1,7 +1,6 @@
 ![Past-a-Box](assets/banner.png)
 
-[![Build Status](https://travis-ci.com/Arthamys/past-a-box.svg?branch=master)]
-(https://travis-ci.com/Arthamys/past-a-box)
+[![Build Status](https://travis-ci.com/Arthamys/past-a-box.svg?branch=master)](https://travis-ci.com/Arthamys/past-a-box)
 
 # Past-a-Box
 
