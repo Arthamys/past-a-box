@@ -1,3 +1,13 @@
+#[macro_use]
+extern crate serde_derive;
+#[macro_use]
+extern crate log;
+
+pub mod client;
+pub mod common;
+pub mod error;
+pub mod server;
+
 #[cfg(test)]
 mod tests {
     #[test]
