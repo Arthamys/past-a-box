@@ -1,0 +1,10 @@
+[package]
+name = "cli"
+version = "0.1.0"
+authors = ["Galilee 'Bill' Enguehard <galilee.enguehard@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+
+api = { path = "../api" }
+env_logger = "0.6"
