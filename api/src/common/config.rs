@@ -20,13 +20,18 @@ impl Default for Config {
 
 impl Config {
     /// Parse the user's configuration file
+    ///
+    /// A configuration file is not required for the good function of the
+    /// program.
+    /// Configuration can be overriden through environment variables.
+    /// The env variables have to start with `PAB_` and the field to override.
     pub fn parse() -> result::Result<Config, config::ConfigError> {
         let mut cfg = config::Config::try_from(&Config::default()).unwrap();
         match cfg.merge(config::File::with_name("config.yaml")) {
             Ok(_) => {}
             Err(_) => info!("No configuration file client."),
         };
-        match cfg.merge(config::Environment::with_prefix("PAB_CLI")) {
+        match cfg.merge(config::Environment::with_prefix("PAB_")) {
             Ok(_) => {}
             Err(_) => info!("No environment variable overrides."),
         };
