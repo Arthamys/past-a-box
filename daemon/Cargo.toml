@@ -7,3 +7,8 @@ edition = "2018"
 [dependencies]
 
 api = { path = "../api" }
+wayland-client = "0.21.11"
+wayland-protocols = "0.21.11"
+smithay-client-toolkit = "0.4.4"
+libc = "0.2.48"
+log = "0.4"
