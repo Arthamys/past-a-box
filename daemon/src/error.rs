@@ -4,6 +4,7 @@ use wayland_client::{ConnectError, GlobalError};
 
 pub type Result<T> = result::Result<T, Error>;
 
+#[derive(Debug)]
 pub enum Error {
     WaylandConnectError(ConnectError),
     WaylandGlobalError(GlobalError),
