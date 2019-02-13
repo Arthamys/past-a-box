@@ -41,11 +41,60 @@ impl WaylandContext {
                 (),
             )
         })?;
+        event_queue.sync_roundtrip()?;
         Ok(WaylandContext {
             display,
             event_queue,
             dcm,
             seat,
         })
+    }
+
+    /// Register the clipboard data handler
+    pub fn register_handler(
+        &mut self,
+        handle: fn(&Proxy<dc::zwlr_data_control_offer_v1::ZwlrDataControlOfferV1>, String),
+    ) {
+        self.dcm
+            .get_data_device(&self.seat, |clipboard| {
+                clipboard.implement(
+                    |clip_evt, _| {
+                        use dc::zwlr_data_control_device_v1::Event;
+                        match clip_evt {
+                            Event::Selection { id } => info!("new selection: {}", id.is_some()),
+
+                            Event::Finished => info!("data control manager should be destroyed."),
+
+                            Event::DataOffer { id } => {
+                                // implement_closure to capture state (event_queue)
+                                id.implement(
+                                    |event, dco /*data control offer*/| {
+                                        use dc::zwlr_data_control_offer_v1::Event as OfferEvent;
+                                        match event {
+                                            OfferEvent::Offer { mime_type } => {
+                                                // look for supported mime_type
+                                                if mime_type == "text/plain" {
+                                                    //receive the data from the clipboard
+                                                    //create pipe and get it's RawFd
+                                                    handle(&dco, String::from("text/plain"));
+                                                } else {
+                                                    info!(
+                                                        "Got offer for unsupoprted type [{}]",
+                                                        mime_type
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    },
+                                    (),
+                                );
+                            }
+                        }
+                    },
+                    (),
+                )
+            })
+            .expect("could not get data device");
+        self.event_queue.sync_roundtrip().unwrap();
     }
 }

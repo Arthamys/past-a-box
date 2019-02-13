@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate log;
 extern crate api;
+extern crate env_logger;
 extern crate libc;
 extern crate wayland_client;
 extern crate wayland_protocols;
@@ -36,9 +37,10 @@ impl Daemon {
 }
 
 fn main() {
-    println!("Starting API server!");
+    env_logger::init();
+    info!("Starting API server!");
 
-    let api_server_hdl = thread::Builder::new()
+    let api_hdl = thread::Builder::new()
         .name("api_listener".into())
         .spawn(move || {
             let srv = Server::new(Box::new(handler)).unwrap();
@@ -49,12 +51,12 @@ fn main() {
     let clipboard_hdl = thread::Builder::new()
         .name("clipboard listener".into())
         .spawn(|| {
-            let ctx = WaylandContext::new();
-            /*listener.listen();*/
+            let mut ctx = WaylandContext::new().unwrap();
+            ctx.register_handler(|_offer, _mime_type| info!("In the handler"))
         })
         .expect("Could not spawn clipboard listener thread");
 
-    api_server_hdl.join().expect("api_server_thread crashed");
+    api_hdl.join().expect("api_server_thread crashed");
     clipboard_hdl.join().expect("clipboard_thread crashed");
 }
 
