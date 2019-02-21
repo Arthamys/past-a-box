@@ -52,16 +52,11 @@ fn plaintext_handler(offer: &DataControlOffer, mime_type: String) {
     if guard.ongoing == false {
         start_transfer(offer, &mut guard);
     } else {
-        let data = transfer_data(&mut guard);
-        info!("received data: {:?}", &data);
+        transfer_data(&mut guard);
     }
 }
 
-fn start_transfer(
-    offer: &DataControlOffer,
-    transfer: &mut MutexGuard<Transfer>,
-    eq: &mut EventQueue,
-) {
+fn start_transfer(offer: &DataControlOffer, transfer: &mut MutexGuard<Transfer>) {
     let mut fds = [0; 2];
     unsafe {
         let res = libc::pipe(fds.as_mut_ptr());
@@ -80,21 +75,38 @@ fn start_transfer(
     info!("asked to receive the content of the clipboard");
 }
 
-fn transfer_data(transfer: &mut MutexGuard<Transfer>) -> Vec<u8> {
-    let mut buf: Vec<u8> = Vec::with_capacity(255);
-    info!("Transfering data");
-    unsafe {
-        let ptr = buf.as_mut_ptr();
-        info!("reading 255 bytes from fd {}", transfer.pipes.0);
-        let count = libc::read(transfer.pipes.0, ptr as *mut libc::c_void, 255);
-        if count < 0 {
-            error!("Could not read");
-        }
-        info!("read {} bytes", count);
-        if libc::close(transfer.pipes.0) < 0 || libc::close(transfer.pipes.1) < 0 {
-            error!("Could not close pipe");
-        }
-    }
+fn transfer_data(transfer: &mut MutexGuard<Transfer>) {
+    let pipe_fds = transfer.pipes.clone();
+    // start a detached thread to read incoming data from the server
+    let hdl = thread::Builder::new()
+        .name("transfer_thread".into())
+        .spawn(move || {
+            let mut clip = String::new();
+            let mut buf: [u8; 255] = [0; 255];
+            info!("Transfering data");
+            unsafe {
+                let ptr = buf.as_mut_ptr();
+                let mut count = 0;
+
+                while {
+                    count = libc::read(pipe_fds.0, ptr as *mut libc::c_void, 255);
+                    if count < 0 {
+                        error!("read syscall failed");
+                    }
+                    let part = String::from_utf8(buf.to_vec()).unwrap();
+                    clip.push_str(&part);
+                    for c in &mut buf[0..255] {
+                        *c = 0;
+                    }
+                    count == 255
+                } {}
+                if libc::close(pipe_fds.0) < 0 || libc::close(pipe_fds.1) < 0 {
+                    error!("Could not close pipe");
+                }
+            }
+            info!("received data: {}", clip);
+        })
+        .unwrap();
+
     transfer.ongoing = false;
-    buf
 }
