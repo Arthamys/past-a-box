@@ -3,3 +3,5 @@
 api/target
 cli/target
 daemon/target
+todo
+vgcore.*
