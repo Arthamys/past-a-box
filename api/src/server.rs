@@ -4,7 +4,10 @@ use crate::common::config::Config;
 use crate::error::{Error, Result};
 use std::io::Read;
 use std::os::unix::net::{UnixListener, UnixStream};
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    atomic::{self, Ordering},
+    Arc, Mutex,
+};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Response {
@@ -20,7 +23,7 @@ pub enum Response {
 pub struct Server {
     listener: Arc<Mutex<UnixListener>>,
     handler: Box<FnMut(Request) -> Response>,
-    on: bool,
+    on: atomic::AtomicBool,
 }
 
 impl Server {
@@ -41,7 +44,7 @@ impl Server {
         Ok(Server {
             listener: Arc::new(Mutex::new(listener)),
             handler: handler,
-            on: true,
+            on: atomic::AtomicBool::new(true),
         })
     }
 
@@ -50,7 +53,7 @@ impl Server {
     /// This method will block the current thread, until the connection gets
     /// broken, or an error gets encountered.
     pub fn run(&self) {
-        while self.on == true {
+        while self.on.load(Ordering::Relaxed) {
             let guard = self.listener.lock();
             for connection in guard.unwrap().incoming() {
                 let mut msg = String::new();
