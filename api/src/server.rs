@@ -2,8 +2,8 @@ use crate::client::Request;
 use crate::common::clipping::Clipping;
 use crate::common::config::Config;
 use crate::error::{Error, Result};
-use std::io::Read;
-use std::os::unix::net::{UnixListener, UnixStream};
+use std::io::{Read, Write};
+use std::os::unix::net::UnixListener;
 use std::sync::{
     atomic::{self, Ordering},
     Arc, Mutex,
@@ -41,6 +41,7 @@ impl Server {
                 return Err(Error::Io(e));
             }
         };
+
         Ok(Server {
             listener: Arc::new(Mutex::new(listener)),
             handler: handler,
@@ -52,25 +53,23 @@ impl Server {
     ///
     /// This method will block the current thread, until the connection gets
     /// broken, or an error gets encountered.
-    pub fn run(&self) {
+    pub fn run(&mut self) {
         while self.on.load(Ordering::Relaxed) {
             let guard = self.listener.lock();
+            info!("Looping over incoming connections");
             for connection in guard.unwrap().incoming() {
-                let mut msg = String::new();
-                connection.unwrap().read_to_string(&mut msg).unwrap();
-                println!("Client sent: {}", msg);
+                info!("new connection: {:?}", &connection);
+                let mut msg = vec![0; 10];
+                let mut co = connection.expect("could not access connection");
+                //TODO: Read the messages from clients
+                co.read_exact(&mut msg).expect("could not read message");
+                println!("Client sent: {:?}", &msg);
+                let rsp = (self.handler)(serde_json::from_slice(&msg).expect("Invalid JSON"));
+                info!("response: {:?}", &rsp);
+                //TODO: send out the response
+                let rsp2 = serde_json::to_vec(&rsp).unwrap();
+                co.write(&rsp2).expect("could not send response");
             }
-            /*            match guard.unwrap().accept() {*/
-            //Ok((sock, addr)) => {
-            //info!("New connection from {:?}", addr);
-            //let mut msg = String::new();
-            //sock.read_to_string(&mut msg)
-            //.expect("could not read to string");
-            //}
-            //Err(e) => {
-            //error!("Could not accept incoming connection. Error: {}", e);
-            //}
-            /*}*/
         }
     }
 }
