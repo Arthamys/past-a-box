@@ -2,7 +2,7 @@ use crate::wayland::WaylandContext;
 use crate::Daemon;
 use api::common::clipping::Clipping;
 use dc::zwlr_data_control_offer_v1::ZwlrDataControlOfferV1 as DataControlOffer;
-use os_pipe::{pipe, PipeReader, PipeWriter};
+use os_pipe::{pipe, PipeReader};
 use std::cell::RefCell;
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::rc::Rc;
