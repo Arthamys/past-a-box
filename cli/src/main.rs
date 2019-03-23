@@ -10,9 +10,7 @@ fn main() {
     env_logger::init();
 
     let api_client = Client::new();
-    println!("api client: {:?}", api_client);
-    let _test_clipping = String::from("test_clipping");
-    api_client.unwrap().request_clipping();
+    println!("api client: {:?}", &api_client);
 
     // Options that we want to support on the command line:
     // -l -> list
@@ -71,4 +69,9 @@ fn main() {
             return;
         }
     };
+    let mut client = api_client.unwrap();
+    info!("requesting clipping");
+    client.request_clipping();
+    info!("reading msg");
+    //client.read_msg();
 }

@@ -1,5 +1,7 @@
 use crate::common::config::Config;
 use crate::error::{Error, Result};
+use serde_json;
+use std::io::Read;
 use std::io::Write;
 use std::os::unix::net::UnixStream;
 use std::sync::{Arc, Mutex};
@@ -40,7 +42,16 @@ impl Client {
 
     pub fn request_clipping(&mut self) {
         let mut guard = self.ipc.lock().unwrap();
-        let msg = String::from("test_test_test_test").into_bytes();
-        guard.write(&msg).unwrap();
+        let msg = serde_json::to_string(&Request::Clipping).expect("could not serialize request");
+        guard
+            .write(&msg.as_bytes())
+            .expect("could not write to IPC");
+    }
+
+    pub fn read_msg(&mut self) {
+        let mut guard = self.ipc.lock().unwrap();
+        let mut rsp = vec![0; 10];
+        guard.read_exact(&mut rsp).unwrap();
+        info!("response: {:?}", &rsp);
     }
 }
