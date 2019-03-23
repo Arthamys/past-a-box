@@ -3,5 +3,7 @@
 api/target
 cli/target
 daemon/target
+gui/target
+
 todo
 vgcore.*
