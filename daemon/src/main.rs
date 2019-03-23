@@ -10,6 +10,7 @@ extern crate wayland_client;
 extern crate wayland_protocols;
 
 mod clipboard;
+mod clippings_storage;
 mod error;
 mod handlers;
 mod wayland;
@@ -18,6 +19,7 @@ use api::client::Request;
 use api::common::clipping::Clipping;
 use api::server::Response;
 use api::server::Server;
+use clippings_storage::ClippingStorage;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
@@ -50,6 +52,7 @@ fn main() {
 
     let daemon = DAEMON.lock().unwrap();
 
+    //let (storage, storage_hdl) = ClippingStorage::new();
     let api_storage = daemon.storage.clone();
     let api_hdl = thread::Builder::new()
         .name("api_listener".into())
@@ -62,8 +65,8 @@ fn main() {
 
     let clipboard_hdl = clipboard::Clipboard::new_clipboard_thread(&DAEMON);
 
-    api_hdl.join().expect("api_server_thread crashed");
     clipboard_hdl.join().expect("clipboard_thread crashed");
+    api_hdl.join().expect("api_server_thread crashed");
 }
 
 // the handler will need to have access to the daemon storage
@@ -71,6 +74,6 @@ fn api_handler(s: &Arc<Mutex<Vec<Clipping>>>, rq: Request) -> Response {
     let rsp = match rq {
         Request::Clipping => s.lock().expect("could not lock storage").to_vec(),
     };
-    info!("Clippings stored: {:?}", &rsp);
+    info!("sending stored clipings({:?})", &rsp);
     Response::Clippings(rsp)
 }

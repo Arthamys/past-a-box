@@ -5,11 +5,9 @@ use data_control::zwlr_data_control_offer_v1::{self, ZwlrDataControlOfferV1};
 use data_control::zwlr_data_control_source_v1::{self, ZwlrDataControlSourceV1};
 use os_pipe::pipe;
 use std::cell::RefCell;
-use std::io::Read;
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::rc::Rc;
 use std::sync::mpsc::Sender;
-use std::thread;
 use wayland_client::protocol::wl_seat::{self, WlSeat};
 use wayland_client::NewProxy;
 use wayland_client::{Display, EventQueue};
@@ -19,7 +17,7 @@ use wayland_protocols::wlr::unstable::data_control::v1::client as data_control;
 pub struct WlSeatHandler;
 
 impl wl_seat::EventHandler for WlSeatHandler {
-    fn name(&mut self, object: WlSeat, name: String) {
+    fn name(&mut self, _object: WlSeat, name: String) {
         info!("Received event for seat {}", name);
     }
 }
@@ -42,23 +40,31 @@ impl data_control::zwlr_data_control_device_v1::EventHandler for DataDeviceHandl
         }
     }
 
-    fn selection(&mut self, object: ZwlrDataControlDeviceV1, id: Option<ZwlrDataControlOfferV1>) {
+    fn selection(&mut self, _object: ZwlrDataControlDeviceV1, id: Option<ZwlrDataControlOfferV1>) {
         if let None = id {
             info!("No new selection...");
             return;
         }
+        let id = id.unwrap();
         info!("New selection");
-        transfer_selection(&id.unwrap(), String::from("text/plain;charset=utf-8"));
+        let clip = transfer_selection(&id, String::from("text/plain;charset=utf-8"));
+        id.as_ref()
+            .user_data::<Rc<RefCell<Clipboard>>>()
+            .unwrap()
+            .borrow()
+            .chan()
+            .send(clip)
+            .expect("Could not send clipping");
     }
 
-    fn finished(&mut self, object: ZwlrDataControlDeviceV1) {
+    fn finished(&mut self, _object: ZwlrDataControlDeviceV1) {
         info!("DataControlDevice is now invalid");
     }
 
     fn primary_selection(
         &mut self,
-        object: ZwlrDataControlDeviceV1,
-        id: Option<ZwlrDataControlOfferV1>,
+        _object: ZwlrDataControlDeviceV1,
+        _id: Option<ZwlrDataControlOfferV1>,
     ) {
         info!("New primary selection");
     }
@@ -135,8 +141,7 @@ fn transfer_selection(offer: &ZwlrDataControlOfferV1, mime_type: String) -> Clip
 }
 
 fn get_event_queue() -> EventQueue {
-    let (display, mut event_queue) =
-        Display::connect_to_env().expect("Could not connect to display");
+    let (_display, event_queue) = Display::connect_to_env().expect("Could not connect to display");
     event_queue
 }
 
