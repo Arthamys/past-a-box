@@ -1,7 +1,9 @@
 //extern crate conrod;
+#[macro_use]
 extern crate conrod_core;
 extern crate conrod_glium;
 extern crate conrod_winit;
+extern crate find_folder;
 extern crate glium;
 
 use glium::Surface;
@@ -9,7 +11,7 @@ use glium::Surface;
 struct GliumDisplayWrapper(pub glium::Display);
 
 const WIN_W: u32 = 1000;
-const WIN_H: u32 = 60;
+const WIN_H: u32 = 1000;
 
 impl conrod_winit::WinitWindow for GliumDisplayWrapper {
     fn get_inner_size(&self) -> Option<(u32, u32)> {
@@ -20,9 +22,22 @@ impl conrod_winit::WinitWindow for GliumDisplayWrapper {
     }
 }
 
+widget_ids!(struct Ids { canvas, list_select });
+
 fn main() {
-    println!("Hello, world!");
+    // gather clippings
+    let clippings = vec![
+        "First Clipping".to_string(),
+        "Second Clipping".to_string(),
+        "Third Clipping".to_string(),
+        "Fourth Clipping".to_string(),
+        "Fith Clipping".to_string(),
+        "Sixth Clipping".to_string(),
+        "Seventh Clipping".to_string(),
+    ];
+
     let mut events_loop = glium::glutin::EventsLoop::new();
+    // construct window with configuration options
     let window = glium::glutin::WindowBuilder::new()
         .with_decorations(false)
         .with_dimensions((WIN_W, WIN_H).into());
@@ -30,17 +45,108 @@ fn main() {
     let display =
         glium::Display::new(window, context, &events_loop).expect("Could not create glium display");
     let display = GliumDisplayWrapper(display);
-    let ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64]).build();
-    let mut renderer = conrod_glium::Renderer::new(&display.0).unwrap();
+    let mut ui = conrod_core::UiBuilder::new([WIN_W as f64, WIN_H as f64]).build();
+    let ids = Ids::new(ui.widget_id_generator());
+
+    // Add a `Font` to the `Ui`'s `font::Map` from file.
+    let assets = find_folder::Search::Kids(5)
+        .for_folder("assets")
+        .expect("Could not find assets folder");
+    let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
+    ui.fonts.insert_from_file(font_path).unwrap();
 
     // The image map describing each of our widget->image mappings (in our case, none).
     let image_map = conrod_core::image::Map::<glium::texture::Texture2d>::new();
+
+    let mut renderer =
+        conrod_glium::Renderer::new(&display.0).expect("Could not create glium renderer");
+
+    let mut id_selected = 0;
     // create event loop
     // see conrod_glium::support::eventloop
     let mut event_loop = EventLoop::new();
-    loop {
+    'main: loop {
         for event in event_loop.next(&mut events_loop) {
-            println!("Got new event: {:?}", event);
+            // Use the `winit` backend feature to convert the winit event to a conrod one.
+            if let Some(event) = conrod_winit::convert_event(event.clone(), &display) {
+                ui.handle_event(event);
+                event_loop.needs_update();
+            }
+
+            match event {
+                glium::glutin::Event::WindowEvent { event, .. } => match event {
+                    // Break from the loop upon `Escape`.
+                    glium::glutin::WindowEvent::CloseRequested
+                    | glium::glutin::WindowEvent::KeyboardInput {
+                        input:
+                            glium::glutin::KeyboardInput {
+                                virtual_keycode: Some(glium::glutin::VirtualKeyCode::Escape),
+                                ..
+                            },
+                        ..
+                    } => break 'main,
+                    _ => (),
+                },
+                _ => (),
+            }
+        }
+
+        // instanciate the widgets
+        {
+            use conrod_core::{
+                widget, Borderable, Colorable, Labelable, Positionable, Sizeable, Widget,
+            };
+            let ui = &mut ui.set_widgets();
+
+            widget::Canvas::new()
+                .color(conrod_core::color::BLUE)
+                .set(ids.canvas, ui);
+
+            // Instantiate the `ListSelect` widget.
+            let num_items = clippings.len();
+            let item_h = 30.0;
+            let font_size = item_h as conrod_core::FontSize / 2;
+            let (mut events, scrollbar) = widget::ListSelect::single(num_items)
+                .flow_down()
+                .item_size(item_h)
+                .scrollbar_next_to()
+                .scrollbar_color(conrod_core::color::LIGHT_CHARCOAL)
+                .w_h(400.0, 230.0)
+                .top_left_with_margins_on(ids.canvas, 40.0, 40.0)
+                .set(ids.list_select, ui);
+
+            // Handle the `ListSelect`s events.
+            while let Some(event) = events.next(ui, |i| i == id_selected) {
+                use conrod_core::widget::list_select::Event;
+                match event {
+                    // For the `Item` events we instantiate the `List`'s items.
+                    Event::Item(item) => {
+                        let label = &clippings[item.i];
+                        let (color, label_color) = match item.i == id_selected {
+                            true => (conrod_core::color::LIGHT_BLUE, conrod_core::color::YELLOW),
+                            false => (conrod_core::color::LIGHT_GREY, conrod_core::color::BLACK),
+                        };
+                        let button = widget::Button::new()
+                            .border(0.0)
+                            .color(color)
+                            .label(label)
+                            .label_font_size(font_size)
+                            .label_color(label_color);
+                        item.set(button, ui);
+                    }
+
+                    // The selection has changed.
+                    Event::Selection(selection) => id_selected = selection,
+
+                    // The remaining events indicate interactions with the `ListSelect` widget.
+                    event => println!("{:?}", &event),
+                }
+            }
+
+            // Instantiate the scrollbar for the list.
+            if let Some(s) = scrollbar {
+                s.set(ui);
+            }
         }
 
         if let Some(primitives) = ui.draw_if_changed() {
