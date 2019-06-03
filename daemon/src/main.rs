@@ -14,36 +14,18 @@ mod clippings_storage;
 mod error;
 mod handlers;
 mod wayland;
+mod daemon;
 
+use daemon::Daemon;
 use api::client::Request;
-use api::common::clipping::Clipping;
 use api::server::Response;
 use api::server::Server;
-use clippings_storage::ClippingStorage;
 use std::sync::{Arc, Mutex};
+use api::common::clipping::Clipping;
 use std::thread;
 
 lazy_static! {
     static ref DAEMON: Mutex<Daemon> = Mutex::new(Daemon::new());
-}
-
-pub struct Daemon {
-    storage: Arc<Mutex<Vec<Clipping>>>,
-}
-
-impl Daemon {
-    /// Create a new Daemon instance
-    pub fn new() -> Daemon {
-        Daemon {
-            storage: Arc::new(Mutex::new(Vec::new())),
-        }
-    }
-
-    /// Add a new clipping to the daemon's clipping storage
-    pub fn add_clipping(&self, clip: Clipping) {
-        let mut clippings = self.storage.lock().expect("Could not lock storage mutex");
-        clippings.push(clip);
-    }
 }
 
 fn main() {
@@ -51,8 +33,6 @@ fn main() {
     info!("Starting API server!");
 
     let daemon = DAEMON.lock().unwrap();
-
-    //let (storage, storage_hdl) = ClippingStorage::new();
     let api_storage = daemon.storage.clone();
     let api_hdl = thread::Builder::new()
         .name("api_listener".into())
