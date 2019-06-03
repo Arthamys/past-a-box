@@ -1,12 +1,17 @@
 //extern crate conrod;
 #[macro_use]
 extern crate conrod_core;
+#[macro_use]
+extern crate log;
+extern crate env_logger;
 extern crate conrod_glium;
 extern crate conrod_winit;
 extern crate find_folder;
 extern crate glium;
 
+
 use glium::Surface;
+use api::client::Client;
 
 struct GliumDisplayWrapper(pub glium::Display);
 
@@ -25,6 +30,11 @@ impl conrod_winit::WinitWindow for GliumDisplayWrapper {
 widget_ids!(struct Ids { canvas, list_select });
 
 fn main() {
+    env_logger::init();
+    let mut api_client = Client::new().unwrap();
+    api_client.request_clipping();
+    api_client.read_msg();
+
     // gather clippings
     let clippings = vec![
         "First Clipping".to_string(),
@@ -139,7 +149,7 @@ fn main() {
                     Event::Selection(selection) => id_selected = selection,
 
                     // The remaining events indicate interactions with the `ListSelect` widget.
-                    event => println!("{:?}", &event),
+                    event => info!("{:?}", &event),
                 }
             }
 

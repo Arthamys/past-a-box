@@ -11,3 +11,5 @@ conrod_glium = "0.63"
 conrod_winit = "0.63"
 glium = "0.23"
 find_folder = "0.3"
+api = { path = "../api" }
+log = "0.4.6"
