@@ -26,6 +26,8 @@ impl wl_seat::EventHandler for WlSeatHandler {
 pub struct DataDeviceHandler;
 
 impl data_control::zwlr_data_control_device_v1::EventHandler for DataDeviceHandler {
+    /// data_offer introduces the DataControlOffer object that is used to receive
+    /// the data that is advertised.
     fn data_offer(
         &mut self,
         object: ZwlrDataControlDeviceV1,
