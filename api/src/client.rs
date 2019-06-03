@@ -51,6 +51,7 @@ impl Client {
     pub fn read_msg(&mut self) {
         let mut guard = self.ipc.lock().unwrap();
         let mut rsp = vec![0; 10];
+        info!("reading api response");
         guard.read_exact(&mut rsp).unwrap();
         info!("response: {:?}", &rsp);
     }

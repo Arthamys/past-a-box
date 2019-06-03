@@ -68,7 +68,8 @@ impl Server {
                 info!("response: {:?}", &rsp);
                 //TODO: send out the response
                 let rsp2 = serde_json::to_vec(&rsp).unwrap();
-                co.write(&rsp2).expect("could not send response");
+                let written = co.write(&rsp2).expect("could not send response");
+                info!("Sent {} bytes", written);
             }
         }
     }
