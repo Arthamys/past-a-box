@@ -427,12 +427,14 @@ dependencies = [
 name = "gui"
 version = "0.1.0"
 dependencies = [
+ "api 0.1.0",
  "conrod_core 0.63.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "conrod_glium 0.63.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "conrod_winit 0.63.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "find_folder 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "glium 0.23.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
