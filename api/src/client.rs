@@ -58,6 +58,10 @@ impl Client {
         self.request(Request::Purge)
     }
 
+    pub fn delete_clipping(&mut self, id: usize) -> Result<usize> {
+        self.request(Request::Delete(id))
+    }
+
     pub fn read_msg(&mut self) -> Result<Response> {
         let mut guard = self.ipc.lock().unwrap();
         info!("reading api response");
