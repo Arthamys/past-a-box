@@ -1,4 +1,3 @@
-use std::error;
 use std::fmt::{self, Display, Formatter};
 use std::io;
 use std::result;
@@ -32,7 +31,7 @@ impl From<std::sync::PoisonError<std::sync::MutexGuard<'_, std::os::unix::net::U
     for Error
 {
     fn from(
-        error: std::sync::PoisonError<std::sync::MutexGuard<'_, std::os::unix::net::UnixStream>>,
+        _error: std::sync::PoisonError<std::sync::MutexGuard<'_, std::os::unix::net::UnixStream>>,
     ) -> Self {
         Error::PoisonError("Poisoned Lock".into())
     }

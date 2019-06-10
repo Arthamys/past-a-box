@@ -1,8 +1,6 @@
 use crate::common::config::Config;
 use crate::error::{Error, Result};
 use crate::server::Response;
-use serde::{Deserialize, Serialize};
-use std::io::Read;
 use std::io::Write;
 use std::os::unix::net::UnixStream;
 use std::sync::{Arc, Mutex};
@@ -63,7 +61,7 @@ impl Client {
     }
 
     pub fn read_msg(&mut self) -> Result<Response> {
-        let mut guard = self.ipc.lock().unwrap();
+        let guard = self.ipc.lock().unwrap();
         info!("reading api response");
         let decoded: bincode::Result<Response> = bincode::deserialize_from(&*guard);
         info!("response: {:?}", &decoded);

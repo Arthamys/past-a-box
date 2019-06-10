@@ -3,15 +3,14 @@
 extern crate conrod_core;
 #[macro_use]
 extern crate log;
-extern crate env_logger;
 extern crate conrod_glium;
 extern crate conrod_winit;
+extern crate env_logger;
 extern crate find_folder;
 extern crate glium;
 
-
-use glium::Surface;
 use api::client::Client;
+use glium::Surface;
 
 struct GliumDisplayWrapper(pub glium::Display);
 
@@ -32,8 +31,14 @@ widget_ids!(struct Ids { canvas, list_select });
 fn main() {
     env_logger::init();
     let mut api_client = Client::new().unwrap();
-    api_client.request_clipping();
-    api_client.read_msg();
+    if let Err(e) = api_client.request_clipping() {
+        error!("could not request clippings to daemon: {}", e);
+        return;
+    }
+    if let Err(e) = api_client.read_msg() {
+        error!("could not read message from daemon: {}", e);
+        return;
+    }
 
     // gather clippings
     let clippings = vec![

@@ -10,7 +10,6 @@ extern crate os_pipe;
 extern crate wayland_client;
 extern crate wayland_protocols;
 
-mod clippings_storage;
 mod daemon;
 mod error;
 mod handlers;
@@ -35,7 +34,6 @@ fn main() {
 
     let daemon = DAEMON.lock().unwrap();
     let api_storage = daemon.storage.clone();
-    let wayland_storage = daemon.storage.clone();
     drop(daemon);
     let api_hdl = thread::Builder::new()
         .name("api_listener".into())
@@ -48,7 +46,7 @@ fn main() {
     let wayland_hdl = thread::Builder::new()
         .name("wayland thread".into())
         .spawn(move || {
-            let ctx = WaylandContext::new(DAEMON.clone());
+            let ctx = WaylandContext::new();
             ctx.unwrap().run();
         })
         .expect("Could not spawn wayland thread");
@@ -69,7 +67,6 @@ fn api_handler(s: &Arc<Mutex<Vec<Clipping>>>, rq: Request) -> Response {
             info!("Requested to delte clipping {}", id);
             Vec::new()
         }
-        _ => unimplemented!(),
     };
     info!("sending stored clipings({:?})", &rsp);
     Response::Clippings(rsp)

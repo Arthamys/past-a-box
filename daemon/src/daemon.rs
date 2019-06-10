@@ -1,5 +1,5 @@
-use std::sync::{Arc, Mutex};
 use api::common::clipping::Clipping;
+use std::sync::{Arc, Mutex};
 
 /// The Daemon struct represents the running instance of the Past-a-Box daemon.
 /// Currently, the daemon only holds the clippings as an in memory vector.
@@ -13,11 +13,5 @@ impl Daemon {
         Daemon {
             storage: Arc::new(Mutex::new(Vec::new())),
         }
-    }
-
-    /// Add a new clipping to the daemon's clipping storage
-    pub fn add_clipping(&self, clip: Clipping) {
-        let mut clippings = self.storage.lock().expect("Could not lock storage mutex");
-        clippings.push(clip);
     }
 }

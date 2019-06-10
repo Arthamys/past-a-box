@@ -1,19 +1,14 @@
 use crate::error::Result;
-use crate::Daemon;
 use crate::DAEMON;
 use clipboard::ClipboardContext;
 use clipboard::ClipboardProvider;
 use dc::zwlr_data_control_manager_v1::ZwlrDataControlManagerV1 as DataControlManager;
-use std::sync::{Arc, Mutex};
 use wayland_client::protocol::wl_seat::WlSeat;
 use wayland_client::{Display, EventQueue, GlobalManager};
 use wayland_protocols::wlr::unstable::data_control::v1::client as dc;
 
 pub struct WaylandContext {
-    display: Display,
     event_queue: EventQueue,
-    dcm: DataControlManager,
-    seat: WlSeat,
 }
 
 impl WaylandContext {
@@ -23,7 +18,7 @@ impl WaylandContext {
     /// This function will only work when ran under a wayland compositor that
     /// implements the zwlr_data_control protocol.
     /// This protocol is still experimental, but is supported by Sway.
-    pub fn new(daemon: Arc<Mutex<Daemon>>) -> Result<WaylandContext> {
+    pub fn new() -> Result<WaylandContext> {
         use crate::handlers::WlSeatHandler;
 
         info!("Creating wayland context...");
@@ -91,12 +86,7 @@ impl WaylandContext {
         info!("Handler registered");
 
         info!("wayland context created");
-        Ok(WaylandContext {
-            display,
-            event_queue,
-            dcm,
-            seat,
-        })
+        Ok(WaylandContext { event_queue })
     }
 
     /// Start the event loop

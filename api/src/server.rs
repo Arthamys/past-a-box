@@ -2,7 +2,6 @@ use crate::client::Request;
 use crate::common::clipping::Clipping;
 use crate::common::config::Config;
 use crate::error::{Error, Result};
-use std::io::{Read, Write};
 use std::os::unix::net::UnixListener;
 use std::sync::{
     atomic::{self, Ordering},
@@ -22,7 +21,7 @@ pub enum Response {
 /// response to the request.
 pub struct Server {
     listener: Arc<Mutex<UnixListener>>,
-    handler: Box<FnMut(Request) -> Response>,
+    handler: Box<dyn FnMut(Request) -> Response>,
     on: atomic::AtomicBool,
 }
 
@@ -31,7 +30,7 @@ impl Server {
     ///
     /// The address can be configured from the general past-a-box configuration
     /// file, or through the environment variable PAB_SOCKET
-    pub fn new(handler: Box<FnMut(Request) -> Response>) -> Result<Server> {
+    pub fn new(handler: Box<dyn FnMut(Request) -> Response>) -> Result<Server> {
         let cfg = Config::parse()?;
         let socket_addr = cfg.socket;
         let listener = match UnixListener::bind(&socket_addr) {
@@ -59,8 +58,7 @@ impl Server {
             info!("Looping over incoming connections");
             for connection in guard.unwrap().incoming() {
                 info!("new connection: {:?}", &connection);
-                let mut co = connection.expect("could not access connection");
-                //TODO: Read the messages from clients
+                let co = connection.expect("could not access connection");
                 let msg: bincode::Result<Request> = bincode::deserialize_from(&co);
                 println!("Client sent: {:?}", &msg);
                 if msg.is_err() {
