@@ -11,6 +11,7 @@ use std::sync::{
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Response {
     Clippings(Vec<Clipping>),
+    Ok,
 }
 
 /// The Server is meant to be used by the daemon that will hold the clippings
@@ -67,7 +68,6 @@ impl Server {
                     let rsp = (self.handler)(msg.unwrap());
                     bincode::serialize_into(&co, &rsp).expect("could not send response");
                     info!("sent response");
-                    //TODO map_err to propagate errors
                 }
             }
         }

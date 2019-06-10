@@ -58,16 +58,18 @@ fn main() {
 // the handler will need to have access to the daemon storage
 fn api_handler(s: &Arc<Mutex<Vec<Clipping>>>, rq: Request) -> Response {
     let rsp = match rq {
-        Request::Clipping => s.lock().expect("could not lock storage").to_vec(),
+        Request::Clipping => {
+            Response::Clippings(s.lock().expect("could not lock storage").to_vec())
+        }
         Request::Purge => {
             info!("Requested to purge");
-            Vec::new()
+            Response::Ok
         }
         Request::Delete(id) => {
             info!("Requested to delte clipping {}", id);
-            Vec::new()
+            Response::Ok
         }
     };
     info!("sending stored clipings({:?})", &rsp);
-    Response::Clippings(rsp)
+    rsp
 }
