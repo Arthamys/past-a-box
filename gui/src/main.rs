@@ -10,6 +10,7 @@ extern crate find_folder;
 extern crate glium;
 
 use api::client::Client;
+use api::server::Response;
 use glium::Surface;
 
 struct GliumDisplayWrapper(pub glium::Display);
@@ -35,21 +36,16 @@ fn main() {
         error!("could not request clippings to daemon: {}", e);
         return;
     }
-    if let Err(e) = api_client.read_msg() {
-        error!("could not read message from daemon: {}", e);
+    let rsp = api_client.read_msg();
+    if rsp.is_err() {
+        error!("could not read message from daemon: {}", rsp.unwrap_err());
         return;
     }
-
-    // gather clippings
-    let clippings = vec![
-        "First Clipping".to_string(),
-        "Second Clipping".to_string(),
-        "Third Clipping".to_string(),
-        "Fourth Clipping".to_string(),
-        "Fith Clipping".to_string(),
-        "Sixth Clipping".to_string(),
-        "Seventh Clipping".to_string(),
-    ];
+    let rsp = rsp.unwrap();
+    let clippings = match rsp {
+        Response::Ok => panic!("Response to clipping request should not be `Ok`"),
+        Response::Clippings(clippings) => clippings,
+    };
 
     let mut events_loop = glium::glutin::EventsLoop::new();
     // construct window with configuration options
@@ -136,7 +132,7 @@ fn main() {
                 match event {
                     // For the `Item` events we instantiate the `List`'s items.
                     Event::Item(item) => {
-                        let label = &clippings[item.i];
+                        let label = &clippings[item.i].0;
                         let (color, label_color) = match item.i == id_selected {
                             true => (conrod_core::color::LIGHT_BLUE, conrod_core::color::YELLOW),
                             false => (conrod_core::color::LIGHT_GREY, conrod_core::color::BLACK),
