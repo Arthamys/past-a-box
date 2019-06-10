@@ -1,6 +1,7 @@
 use crate::common::config::Config;
 use crate::error::{Error, Result};
-use serde_json;
+use crate::server::Response;
+use serde::{Deserialize, Serialize};
 use std::io::Read;
 use std::io::Write;
 use std::os::unix::net::UnixStream;
@@ -11,9 +12,18 @@ pub struct Client {
     ipc: Arc<Mutex<UnixStream>>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Copy)]
 pub enum Request {
+    /// Request the list of clippings
     Clipping,
+
+    /// Delete a single clipping
+    /// #### parameter
+    /// clipping_id
+    Delete(usize),
+
+    /// Purge all stored clippings
+    Purge,
 }
 
 impl Client {
@@ -40,19 +50,25 @@ impl Client {
         })
     }
 
-    pub fn request_clipping(&mut self) {
-        let mut guard = self.ipc.lock().unwrap();
-        let msg = serde_json::to_string(&Request::Clipping).expect("could not serialize request");
-        guard
-            .write(&msg.as_bytes())
-            .expect("could not write to IPC");
+    pub fn request_clipping(&mut self) -> Result<usize> {
+        self.request(Request::Clipping)
     }
 
-    pub fn read_msg(&mut self) {
+    pub fn purge_clippings(&mut self) -> Result<usize> {
+        self.request(Request::Purge)
+    }
+
+    pub fn read_msg(&mut self) -> Result<Response> {
         let mut guard = self.ipc.lock().unwrap();
-        let mut rsp = vec![0; 10];
         info!("reading api response");
-        guard.read_exact(&mut rsp).unwrap();
-        info!("response: {:?}", &rsp);
+        let decoded: bincode::Result<Response> = bincode::deserialize_from(&*guard);
+        info!("response: {:?}", &decoded);
+        decoded.map_err(|e| Error::Bincode(e))
+    }
+
+    fn request(&mut self, req: Request) -> Result<usize> {
+        let mut guard = self.ipc.lock()?;
+        let encoded: Vec<u8> = bincode::serialize(&req)?;
+        guard.write(&encoded).map_err(|e| Error::Io(e))
     }
 }

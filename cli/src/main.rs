@@ -73,5 +73,6 @@ fn main() {
     info!("requesting clipping");
     client.request_clipping();
     info!("reading msg");
-    //client.read_msg();
+    client.read_msg();
+    info!("read msg");
 }

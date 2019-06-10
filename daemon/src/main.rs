@@ -61,6 +61,15 @@ fn main() {
 fn api_handler(s: &Arc<Mutex<Vec<Clipping>>>, rq: Request) -> Response {
     let rsp = match rq {
         Request::Clipping => s.lock().expect("could not lock storage").to_vec(),
+        Request::Purge => {
+            info!("Requested to purge");
+            Vec::new()
+        }
+        Request::Delete(id) => {
+            info!("Requested to delte clipping {}", id);
+            Vec::new()
+        }
+        _ => unimplemented!(),
     };
     info!("sending stored clipings({:?})", &rsp);
     Response::Clippings(rsp)

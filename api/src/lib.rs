@@ -2,6 +2,7 @@
 extern crate serde_derive;
 #[macro_use]
 extern crate log;
+extern crate bincode;
 
 pub mod client;
 pub mod common;

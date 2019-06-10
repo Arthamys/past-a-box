@@ -9,7 +9,7 @@ use std::sync::{
     Arc, Mutex,
 };
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Response {
     Clippings(Vec<Clipping>),
 }
@@ -59,17 +59,18 @@ impl Server {
             info!("Looping over incoming connections");
             for connection in guard.unwrap().incoming() {
                 info!("new connection: {:?}", &connection);
-                let mut msg = vec![0; 10];
                 let mut co = connection.expect("could not access connection");
                 //TODO: Read the messages from clients
-                co.read_exact(&mut msg).expect("could not read message");
+                let msg: bincode::Result<Request> = bincode::deserialize_from(&co);
                 println!("Client sent: {:?}", &msg);
-                let rsp = (self.handler)(serde_json::from_slice(&msg).expect("Invalid JSON"));
-                info!("response: {:?}", &rsp);
-                //TODO: send out the response
-                let rsp2 = serde_json::to_vec(&rsp).unwrap();
-                let written = co.write(&rsp2).expect("could not send response");
-                info!("Sent {} bytes", written);
+                if msg.is_err() {
+                    warn!("Could not deserialize message: {:?}", msg.unwrap_err());
+                } else {
+                    let rsp = (self.handler)(msg.unwrap());
+                    bincode::serialize_into(&co, &rsp).expect("could not send response");
+                    info!("sent response");
+                    //TODO map_err to propagate errors
+                }
             }
         }
     }

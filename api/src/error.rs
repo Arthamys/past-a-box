@@ -7,6 +7,8 @@ use std::result;
 pub enum Error {
     Io(io::Error),
     ConfigError(config::ConfigError),
+    PoisonError(String),
+    Bincode(Box<bincode::ErrorKind>),
 }
 
 impl Display for Error {
@@ -14,11 +16,27 @@ impl Display for Error {
         match *self {
             Error::Io(ref err) => err.fmt(formatter),
             Error::ConfigError(ref err) => err.fmt(formatter),
+            Error::Bincode(ref err) => err.fmt(formatter),
+            Error::PoisonError(ref err) => err.fmt(formatter),
         }
     }
 }
 
-impl error::Error for Error {}
+impl From<Box<bincode::ErrorKind>> for Error {
+    fn from(error: Box<bincode::ErrorKind>) -> Self {
+        Error::Bincode(error)
+    }
+}
+
+impl From<std::sync::PoisonError<std::sync::MutexGuard<'_, std::os::unix::net::UnixStream>>>
+    for Error
+{
+    fn from(
+        error: std::sync::PoisonError<std::sync::MutexGuard<'_, std::os::unix::net::UnixStream>>,
+    ) -> Self {
+        Error::PoisonError("Poisoned Lock".into())
+    }
+}
 
 impl From<io::Error> for Error {
     fn from(error: io::Error) -> Self {
