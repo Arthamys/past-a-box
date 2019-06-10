@@ -3,3 +3,9 @@
 /// For now clippings only store utf-8 text
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Clipping(pub String);
+
+impl From<String> for Clipping {
+    fn from(string: String) -> Self {
+        Clipping(string)
+    }
+}

@@ -1,11 +1,9 @@
-use crate::clipboard::Clipboard;
 use crate::error::Result;
 use crate::Daemon;
-use api::common::clipping::Clipping;
+use crate::DAEMON;
+use clipboard::ClipboardContext;
+use clipboard::ClipboardProvider;
 use dc::zwlr_data_control_manager_v1::ZwlrDataControlManagerV1 as DataControlManager;
-use std::cell::RefCell;
-use std::rc::Rc;
-use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
 use wayland_client::protocol::wl_seat::WlSeat;
 use wayland_client::{Display, EventQueue, GlobalManager};
@@ -16,7 +14,6 @@ pub struct WaylandContext {
     event_queue: EventQueue,
     dcm: DataControlManager,
     seat: WlSeat,
-    rx: Receiver<Clipping>,
 }
 
 impl WaylandContext {
@@ -26,11 +23,8 @@ impl WaylandContext {
     /// This function will only work when ran under a wayland compositor that
     /// implements the zwlr_data_control protocol.
     /// This protocol is still experimental, but is supported by Sway.
-    pub fn new(
-        clipboard: Rc<RefCell<Clipboard>>,
-        rx: Receiver<Clipping>,
-    ) -> Result<WaylandContext> {
-        use crate::handlers::{DataDeviceHandler, WlSeatHandler};
+    pub fn new(daemon: Arc<Mutex<Daemon>>) -> Result<WaylandContext> {
+        use crate::handlers::WlSeatHandler;
 
         info!("Creating wayland context...");
         let (display, mut event_queue) = Display::connect_to_env()?;
@@ -50,7 +44,48 @@ impl WaylandContext {
 
         info!("registering DataDevice Handler...");
         dcm.get_data_device(&seat, move |dev| {
-            dev.implement(DataDeviceHandler, clipboard)
+            dev.implement_closure(
+                |evt, _ /*data_control_device*/| {
+                    use dc::zwlr_data_control_device_v1::Event;
+                    match evt {
+                        Event::DataOffer { id } => {
+                            id.implement_closure(
+                                |offer, _ /*data_control_device*/| {
+                                    use dc::zwlr_data_control_offer_v1::Event;
+                                    match offer {
+                                        Event::Offer { ref mime_type }
+                                            if mime_type == "text/plain;charset=utf-8" =>
+                                        {
+                                            let mut ctx: ClipboardContext =
+                                                ClipboardProvider::new().unwrap();
+                                            let clip = ctx.get_contents();
+                                            let d = DAEMON.lock().unwrap();
+                                            let mut d2 = d.storage.lock().unwrap();
+                                            d2.push(clip.unwrap().into());
+                                            // append to cliping storage
+                                        }
+                                        Event::Offer { mime_type } => {
+                                            info!("Received offer for mime_type {}", mime_type)
+                                        }
+                                        _ => unreachable!(),
+                                    }
+                                },
+                                (),
+                            );
+                        }
+                        Event::Finished => info!("Data device is getting destroyed"),
+                        Event::Selection { id } => {
+                            if id.is_some() {
+                                info!("Received Selection");
+                            } else {
+                                info!("No Selection before start");
+                            }
+                        }
+                        _ => unimplemented!(),
+                    }
+                },
+                (),
+            )
         })
         .expect("could not register data_device handler");
         info!("Handler registered");
@@ -61,24 +96,18 @@ impl WaylandContext {
             event_queue,
             dcm,
             seat,
-            rx,
         })
     }
 
     /// Start the event loop
-    pub fn run(&mut self, s: &'static Mutex<Daemon>) -> ! {
+    pub fn run(&mut self) -> ! {
         use std::{thread, time};
 
         let freq = time::Duration::from_millis(1000);
         info!("starting the event_loop");
         loop {
+            info!("roundtrip");
             self.event_queue.sync_roundtrip().unwrap();
-            info!("Reading clippings");
-            let c = self.rx.try_recv();
-            if c.is_ok() {
-                info!("Read clipping: {:?}", &c);
-                s.lock().unwrap().add_clipping(c.unwrap());
-            }
             thread::sleep(freq);
         }
     }
