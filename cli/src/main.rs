@@ -1,3 +1,4 @@
+extern crate api;
 extern crate clap;
 
 #[macro_use]
@@ -8,9 +9,6 @@ use clap::{App, Arg, ArgGroup};
 
 fn main() {
     env_logger::init();
-
-    let api_client = Client::new();
-    println!("api client: {:?}", &api_client);
 
     // Options that we want to support on the command line:
     // -l -> list
@@ -27,7 +25,7 @@ fn main() {
             Arg::with_name("list")
                 .short("l")
                 .long("list")
-                .help("list the clippings the stored by tge daemon")
+                .help("list the clippings the stored by the daemon")
                 .takes_value(false),
         )
         .arg(
@@ -62,17 +60,47 @@ fn main() {
         .get_matches();
 
     let count = matches.value_of("count").unwrap_or("15");
-    let count = match count.parse::<i32>() {
+    let _count = match count.parse::<i32>() {
         Ok(val) => val,
         Err(e) => {
             error!("Could not parse COUNT value {}", e);
             return;
         }
     };
+
+    let api_client = Client::new();
+    if api_client.is_err() {
+        error!("could not create API client: {}", api_client.unwrap_err());
+        return;
+    }
     let mut client = api_client.unwrap();
-    info!("requesting clipping");
-    client.request_clipping();
+
+    if matches.is_present("list") {
+        info!("requesting clipping");
+        if let Err(e) = client.request_clipping() {
+            error!("could not request clippings: {}", e);
+            return;
+        }
+    } else if matches.is_present("purge") {
+        info!("purging clippings");
+        if let Err(e) = client.purge_clippings() {
+            error!("could not purge clippings: {}", e);
+            return;
+        }
+    } else if matches.is_present("delete") {
+        let id = matches
+            .value_of("delete")
+            .unwrap()
+            .parse::<usize>()
+            .unwrap();
+        if let Err(e) = client.delete_clipping(id) {
+            error!("could not delete clippings {}: {}", id, e);
+            return;
+        }
+    }
     info!("reading msg");
-    client.read_msg();
+    if let Err(e) = client.read_msg() {
+        error!("could not read server response: {}", e);
+    }
     info!("read msg");
 }
