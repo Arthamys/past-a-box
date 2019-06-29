@@ -5,6 +5,7 @@ extern crate clap;
 extern crate log;
 
 use api::client::Client;
+use api::server::Response;
 use clap::{App, Arg, ArgGroup};
 
 fn main() {
@@ -52,9 +53,17 @@ fn main() {
                 .value_name("ID")
                 .takes_value(true),
         )
+        .arg(
+            Arg::with_name("select")
+                .short("s")
+                .long("select")
+                .help("Set clipping <ID> to be the active clipboard content")
+                .value_name("ID")
+                .takes_value(true),
+        )
         .group(
             ArgGroup::with_name("commands")
-                .args(&["list", "purge", "delete"])
+                .args(&["list", "purge", "delete", "select"])
                 .required(true),
         )
         .get_matches();
@@ -80,6 +89,7 @@ fn main() {
         if let Err(e) = client.request_clipping() {
             error!("could not request clippings: {}", e);
             return;
+        } else {
         }
     } else if matches.is_present("purge") {
         info!("purging clippings");
@@ -97,10 +107,24 @@ fn main() {
             error!("could not delete clippings {}: {}", id, e);
             return;
         }
+    } else if matches.is_present("select") {
+        let id = matches
+            .value_of("select")
+            .unwrap()
+            .parse::<usize>()
+            .unwrap();
+        if let Err(e) = client.select_clippings(id) {
+            error!("could not select clippings {}: {}", id, e);
+            return;
+        }
     }
-    info!("reading msg");
-    if let Err(e) = client.read_msg() {
-        error!("could not read server response: {}", e);
+    if let Ok(response) = client.read_msg() {
+        if let Response::Clippings(clippings) = response {
+            for clipping in clippings {
+                println!("{}", clipping);
+            }
+        }
+    } else {
+        warn!("could not read response from server");
     }
-    info!("read msg");
 }

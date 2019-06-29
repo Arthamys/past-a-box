@@ -56,7 +56,11 @@ impl WaylandContext {
                                             let clip = ctx.get_contents();
                                             let d = DAEMON.lock().unwrap();
                                             let mut d2 = d.storage.lock().unwrap();
-                                            d2.push(clip.unwrap().into());
+                                            let clip = clip.unwrap().into();
+                                            //check if clipping already exists
+                                            if d2.contains(&clip) == false {
+                                                d2.push(clip);
+                                            }
                                             // append to cliping storage
                                         }
                                         Event::Offer { mime_type } => {
@@ -96,7 +100,6 @@ impl WaylandContext {
         let freq = time::Duration::from_millis(1000);
         info!("starting the event_loop");
         loop {
-            info!("roundtrip");
             self.event_queue.sync_roundtrip().unwrap();
             thread::sleep(freq);
         }

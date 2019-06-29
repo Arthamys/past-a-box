@@ -114,7 +114,7 @@ pub fn instanciate_widgets(context: &mut Context, clippings: &Vec<Clipping>) {
         match event {
             // For the `Item` events we instantiate the `List`'s items.
             Event::Item(item) => {
-                let label = &clippings[item.i].0;
+                let label = &clippings[item.i].data;
                 let (color, label_color) = match item.i == id_selected {
                     true => (conrod_core::color::LIGHT_BLUE, conrod_core::color::YELLOW),
                     false => (conrod_core::color::LIGHT_GREY, conrod_core::color::BLACK),
@@ -129,7 +129,18 @@ pub fn instanciate_widgets(context: &mut Context, clippings: &Vec<Clipping>) {
             }
 
             // The selection has changed.
-            Event::Selection(selection) => context.id_selected = selection,
+            Event::Selection(selection) => {
+                info!("selected id: {}", &selection);
+                context.id_selected = selection;
+                let mut api_client = Client::new().expect(API_CONNECT_ERROR);
+                api_client
+                    .select_clippings(selection)
+                    .expect("cannot set active clipping");
+                /*context*/
+                //.api_client
+                //.select_clippings(selection)
+                /*.expect("could not select clipping");*/
+            }
 
             // The remaining events indicate interactions with the `ListSelect` widget.
             event => info!("{:?}", &event),

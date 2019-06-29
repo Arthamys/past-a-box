@@ -20,6 +20,8 @@ use api::client::Request;
 use api::common::clipping::Clipping;
 use api::server::Response;
 use api::server::Server;
+use clipboard::ClipboardContext;
+use clipboard::ClipboardProvider;
 use daemon::Daemon;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -59,7 +61,24 @@ fn main() {
 fn api_handler(s: &Arc<Mutex<Vec<Clipping>>>, rq: Request) -> Response {
     let rsp = match rq {
         Request::Clipping => {
-            Response::Clippings(s.lock().expect("could not lock storage").to_vec())
+            let mut clippings = s
+                .lock()
+                .expect("could not lock storage")
+                .to_vec()
+                .into_iter();
+            let res = clippings
+                .enumerate()
+                .map(|(i, mut val)| {
+                    val.id = i;
+                    val
+                })
+                .collect();
+            Response::Clippings(res)
+        }
+        Request::Select(id) => {
+            info!("Setting active clipping to {}", id);
+            set_active_clippings(&s, id);
+            Response::Ok
         }
         Request::Purge => {
             info!("Requested to purge");
@@ -70,6 +89,16 @@ fn api_handler(s: &Arc<Mutex<Vec<Clipping>>>, rq: Request) -> Response {
             Response::Ok
         }
     };
-    info!("sending stored clipings({:?})", &rsp);
+    info!("Response: {:?}", &rsp);
     rsp
+}
+
+fn set_active_clippings(storage: &Arc<Mutex<Vec<Clipping>>>, id: usize) {
+    debug!("id: {}", id);
+    let mut ctx: ClipboardContext =
+        ClipboardProvider::new().expect("could not get clipboard context");
+    let clip_data = storage.lock().expect("could not lock storage").to_vec()[id]
+        .data
+        .clone();
+    let clip = ctx.set_contents(clip_data);
 }

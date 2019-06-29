@@ -26,6 +26,11 @@ pub struct Server {
     on: atomic::AtomicBool,
 }
 
+fn clear_unix_socket(socket_addr: &str) {
+    debug!("removing previous unix socket");
+    std::fs::remove_file(socket_addr).expect("could not remove previous socket");
+}
+
 impl Server {
     /// Create a new server that will listen on a specific unix domain socket
     ///
@@ -36,10 +41,17 @@ impl Server {
         let socket_addr = cfg.socket;
         let listener = match UnixListener::bind(&socket_addr) {
             Ok(sock) => sock,
-            Err(e) => {
-                error!("Could not bind to address '{}'", &socket_addr);
-                return Err(Error::Io(e));
-            }
+            Err(e) => match (e.kind()) {
+                std::io::ErrorKind::AddrInUse => {
+                    clear_unix_socket(&socket_addr);
+                    UnixListener::bind(&socket_addr)
+                        .expect(&format!("cannot bind to address '{}'", socket_addr))
+                }
+                _ => {
+                    error!("Could not bind to address '{}'", &socket_addr);
+                    return Err(Error::Io(e));
+                }
+            },
         };
 
         Ok(Server {
@@ -61,13 +73,14 @@ impl Server {
                 info!("new connection: {:?}", &connection);
                 let co = connection.expect("could not access connection");
                 let msg: bincode::Result<Request> = bincode::deserialize_from(&co);
-                println!("Client sent: {:?}", &msg);
+                info!("Deserialized: {:?}", &msg);
                 if msg.is_err() {
                     warn!("Could not deserialize message: {:?}", msg.unwrap_err());
                 } else {
                     let rsp = (self.handler)(msg.unwrap());
-                    bincode::serialize_into(&co, &rsp).expect("could not send response");
-                    info!("sent response");
+                    if let Err(err) = bincode::serialize_into(&co, &rsp) {
+                        warn!("could not write response: {:?}", err);
+                    }
                 }
             }
         }

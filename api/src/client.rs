@@ -5,7 +5,7 @@ use std::io::Write;
 use std::os::unix::net::UnixStream;
 use std::sync::{Arc, Mutex};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Client {
     ipc: Arc<Mutex<UnixStream>>,
 }
@@ -22,6 +22,11 @@ pub enum Request {
 
     /// Purge all stored clippings
     Purge,
+
+    /// Set active clipping
+    /// #### parameter
+    /// clipping_id
+    Select(usize),
 }
 
 impl Client {
@@ -60,11 +65,13 @@ impl Client {
         self.request(Request::Delete(id))
     }
 
+    pub fn select_clippings(&mut self, id: usize) -> Result<usize> {
+        self.request(Request::Select(id))
+    }
+
     pub fn read_msg(&mut self) -> Result<Response> {
         let guard = self.ipc.lock().unwrap();
-        info!("reading api response");
         let decoded: bincode::Result<Response> = bincode::deserialize_from(&*guard);
-        info!("response: {:?}", &decoded);
         decoded.map_err(|e| Error::Bincode(e))
     }
 
