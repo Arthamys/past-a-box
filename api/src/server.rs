@@ -41,7 +41,7 @@ impl Server {
         let socket_addr = cfg.socket;
         let listener = match UnixListener::bind(&socket_addr) {
             Ok(sock) => sock,
-            Err(e) => match (e.kind()) {
+            Err(e) => match e.kind() {
                 std::io::ErrorKind::AddrInUse => {
                     clear_unix_socket(&socket_addr);
                     UnixListener::bind(&socket_addr)

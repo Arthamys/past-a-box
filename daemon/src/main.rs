@@ -61,7 +61,7 @@ fn main() {
 fn api_handler(s: &Arc<Mutex<Vec<Clipping>>>, rq: Request) -> Response {
     let rsp = match rq {
         Request::Clipping => {
-            let mut clippings = s
+            let clippings = s
                 .lock()
                 .expect("could not lock storage")
                 .to_vec()
@@ -100,5 +100,7 @@ fn set_active_clippings(storage: &Arc<Mutex<Vec<Clipping>>>, id: usize) {
     let clip_data = storage.lock().expect("could not lock storage").to_vec()[id]
         .data
         .clone();
-    let clip = ctx.set_contents(clip_data);
+    if let Err(e) = ctx.set_contents(clip_data) {
+        error!("could not set clipboard active content: {:?}", e);
+    }
 }

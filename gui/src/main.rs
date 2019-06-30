@@ -130,20 +130,16 @@ pub fn instanciate_widgets(context: &mut Context, clippings: &Vec<Clipping>) {
 
             // The selection has changed.
             Event::Selection(selection) => {
-                info!("selected id: {}", &selection);
                 context.id_selected = selection;
                 let mut api_client = Client::new().expect(API_CONNECT_ERROR);
                 api_client
                     .select_clippings(selection)
                     .expect("cannot set active clipping");
-                /*context*/
-                //.api_client
-                //.select_clippings(selection)
-                /*.expect("could not select clipping");*/
+                info!("active clipping set");
             }
 
             // The remaining events indicate interactions with the `ListSelect` widget.
-            event => info!("{:?}", &event),
+            event => debug!("{:?}", &event),
         }
     }
 
